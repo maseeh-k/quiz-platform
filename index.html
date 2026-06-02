@@ -739,7 +739,13 @@ function renderHCtrl(st){
     badge.textContent='Lobby';badge.className='pill pi';
     qc.style.display='none';lbc.style.display='none';
     document.getElementById('h-ans').textContent='—';document.getElementById('h-rem').textContent='—';document.getElementById('h-qn').textContent='—';
-    ctrl.innerHTML=`<div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">${esc(st.quizIcon||'🎯')}</div><div><div style="font-family:var(--fd);font-size:14px;font-weight:600">${esc(st.quizTitle||'Quiz')}</div><div style="font-size:12px;color:var(--tx3)">${total} questions · ${st.timePerQ||15}s each</div></div></div><p style="font-size:13px;color:var(--tx2);margin-bottom:12px">Participants can join now. Start when ready.</p><button class="btn bp" style="margin-bottom:8px" onclick="window.hStart()">▶ Start quiz</button><button class="btn bg btn-sm" style="color:var(--tx3)" onclick="window.hPickAnother()">↩ Pick different quiz</button>`;
+    // Safe fallbacks when st is null or missing fields
+    const quizIcon=st&&st.quizIcon?st.quizIcon:'🎯';
+    const quizTitle=st&&st.quizTitle?st.quizTitle:'Quiz';
+    const quizQ=st&&st.totalQ?st.totalQ:activeQS.length||'?';
+    const quizT=st&&st.timePerQ?st.timePerQ:activeQTime||15;
+    const quizInfoBlock=quizTitle&&quizTitle!=='Quiz'?`<div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">${esc(quizIcon)}</div><div><div style="font-family:var(--fd);font-size:14px;font-weight:600">${esc(quizTitle)}</div><div style="font-size:12px;color:var(--tx3)">${quizQ} questions · ${quizT}s each</div></div></div>`:'';
+    ctrl.innerHTML=`${quizInfoBlock}<p style="font-size:13px;color:var(--tx2);margin-bottom:12px">Participants can join now. Start when ready.</p><button class="btn bp" style="margin-bottom:8px" onclick="window.hStart()">▶ Start quiz</button><button class="btn bg btn-sm" style="color:var(--tx3)" onclick="window.hPickAnother()">↩ Pick different quiz</button>`;
   } else if(st.phase==='question'){
     badge.textContent=`Q ${st.qIdx+1} live`;badge.className='pill pt';
     qc.style.display='block';lbc.style.display='none';ctrl.innerHTML='';
@@ -791,27 +797,28 @@ function renderHCtrl(st){
 
 window.hStart=function(){
   const now=Date.now();
-  const newSt={...getStateSync(),phase:'question',qIdx:0,revealed:false,startTs:now};
+  const cur=getStateSync()||{};
+  const newSt={...cur,phase:'question',qIdx:0,revealed:false,startTs:now};
   _cachedState=newSt;
   dbSet('state',newSt);
   renderHCtrl(newSt); // instant host update
 }
 window.hReveal=function(qi){
   stopTimer(false);
-  const newSt={...getStateSync(),phase:'reveal',qIdx:qi,revealed:true};
+  const newSt={...(getStateSync()||{}),phase:'reveal',qIdx:qi,revealed:true};
   _cachedState=newSt;
   dbUpdate('state',{phase:'reveal',qIdx:qi,revealed:true});
   renderHCtrl(newSt); // instant host update
 }
 window.hNext=function(qi){
   const now=Date.now();
-  const newSt={...getStateSync(),phase:'question',qIdx:qi+1,revealed:false,startTs:now};
+  const newSt={...(getStateSync()||{}),phase:'question',qIdx:qi+1,revealed:false,startTs:now};
   _cachedState=newSt;
   dbUpdate('state',{phase:'question',qIdx:qi+1,revealed:false,startTs:now});
   renderHCtrl(newSt); // instant host update
 }
 window.hCp=function(qi){
-  const newSt={...getStateSync(),phase:'checkpoint',cpAfter:qi};
+  const newSt={...(getStateSync()||{}),phase:'checkpoint',cpAfter:qi};
   _cachedState=newSt;
   dbUpdate('state',{phase:'checkpoint',cpAfter:qi});
   renderHCtrl(newSt); // instant host update
@@ -822,7 +829,7 @@ window.hCp=function(qi){
   });
 }
 window.hFinish=function(){
-  const newSt={...getStateSync(),phase:'done'};
+  const newSt={...(getStateSync()||{}),phase:'done'};
   _cachedState=newSt;
   dbUpdate('state',{phase:'done'});
   renderHCtrl(newSt); // instant host update
