@@ -164,7 +164,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 <div id="toast" class="toast"></div>
 
 <!-- FIREBASE SETUP -->
-<div id="s-setup" class="screen active">
+<div id="s-setup" class="screen">
   <div class="card">
     <div class="ch"><div class="ct">⚙️ One-time Firebase setup</div><span class="pill pa">Required</span></div>
     <div class="cb">
@@ -183,7 +183,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 </div>
 
 <!-- HOME (participant join / role select) -->
-<div id="s-home" class="screen">
+<div id="s-home" class="screen active">
   <div class="card">
     <div class="ch"><div class="ct">🎯 Quiz Platform</div><span class="pill pi" id="home-quiz-badge">Loading...</span></div>
     <div class="cb">
@@ -428,9 +428,9 @@ function initFB(url){
   }catch(e){alert('Invalid Firebase URL.');}
 }
 
-const saved=localStorage.getItem('quiz_fb_url');
-if(saved){try{const app=initializeApp({databaseURL:saved},'quizplatform');db=getDatabase(app);showScreen('s-home');loadActiveQuizInfo();}catch(e){showScreen('s-setup');}}
-else{showScreen('s-setup');}
+const saved='https://quiz-platform-b5e09-default-rtdb.asia-southeast1.firebasedatabase.app';
+try{const app=initializeApp({databaseURL:saved},'quizplatform');db=getDatabase(app);showScreen('s-home');loadActiveQuizInfo();}catch(e){alert('Firebase connection failed. Please check the database URL.');}
+
 
 function loadActiveQuizInfo(){
   dbListen('state',st=>{
