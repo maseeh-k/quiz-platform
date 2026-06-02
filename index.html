@@ -378,8 +378,8 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getDatabase, ref, set, get, onValue, update, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-const HOST_CODE = '2704';
-const ADMIN_CODE = '2704';
+const _ck='qp_x7z3nt';function _dc(b){const r=atob(b);let o='';for(let i=0;i<r.length;i++)o+=String.fromCharCode(r.charCodeAt(i)^_ck.charCodeAt(i%_ck.length));return o;}const HOST_CODE=_dc('Q0dvTA==');
+const ADMIN_CODE=_dc('Q0dvTA==');
 const MAX_PTS = 1000;
 const CHECKPOINTS_EVERY = 4; // show LB every 4 questions
 const L = ['A','B','C','D','E'];
