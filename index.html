@@ -376,7 +376,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, get, onValue, update, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, ref, set, get, onValue, update, remove, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const _ck='qp_x7z3nt';function _dc(b){const r=atob(b);let o='';for(let i=0;i<r.length;i++)o+=String.fromCharCode(r.charCodeAt(i)^_ck.charCodeAt(i%_ck.length));return o;}const HOST_CODE=_dc('Q0dvTA==');
 const ADMIN_CODE=_dc('Q0dvTA==');
@@ -795,15 +795,18 @@ window.joinQuiz = function(){
   const sk=safeKey(n);
   dbGet('state').then(st=>{
     if(!st){alert('No quiz is set up yet. Ask the host.');return;}
+    if(!st.quizId){alert('Host has not selected a quiz yet. Please wait.');return;}
     // Load quiz questions
     dbGet(`quizzes/${st.quizId}`).then(q=>{
       if(!q){alert('Quiz not found. Ask the host.');return;}
       activeQS=q.questions;activeQTime=q.timePerQ||15;
-      dbUpdate(`participants/${sk}`,{name:n,score:0,correct:0,joined:Date.now()});
-      document.getElementById('p-name-w').textContent=n;
-      document.getElementById('p-name-q').textContent=n;
-      showScreen('s-pwait');
-      listenAsParticipant();
+      // Use set (not update) to ensure clean participant record with correct name
+      set(ref(db,`participants/${sk}`),{name:n,score:0,correct:0,answers:{},joined:Date.now()}).then(()=>{
+        document.getElementById('p-name-w').textContent=n;
+        document.getElementById('p-name-q').textContent=n;
+        showScreen('s-pwait');
+        listenAsParticipant();
+      });
     });
   });
 }
@@ -899,10 +902,15 @@ window.pSubMulti=function(){
 function savePAnswer(qi,sel,pts){
   const ok=sel.length>0&&arrEq(sel,activeQS[qi].a);
   const sk=safeKey(playerName);
-  dbUpdate(`participants/${sk}/answers/${qi}`,{sel,ok,pts});
-  dbGet(`participants/${sk}`).then(p=>{
-    if(!p)return;
-    dbUpdate(`participants/${sk}`,{score:(p.score||0)+(ok?pts:0),correct:(p.correct||0)+(ok?1:0)});
+  // Save answer first, then atomically update score using transaction
+  dbUpdate(`participants/${sk}/answers/${qi}`,{sel,ok,pts}).then(()=>{
+    runTransaction(ref(db,`participants/${sk}`), p=>{
+      if(!p)return p;
+      p.score=(p.score||0)+(ok?pts:0);
+      p.correct=(p.correct||0)+(ok?1:0);
+      p.name=playerName; // ensure name is always set correctly
+      return p;
+    });
   });
 }
 
@@ -939,21 +947,29 @@ function showCp(afterQ,totalQ){
 function showPResult(totalQ){
   const total=totalQ||activeQS.length;
   const sk=safeKey(playerName);
-  dbGet('participants').then(ps=>{
-    if(!ps)return;
-    const all=Object.values(ps);
-    const me=all.find(p=>p.name===playerName)||{score:0,correct:0};
-    const sorted=all.sort((a,b)=>b.score-a.score);
-    const rank=sorted.findIndex(p=>p.name===playerName)+1;
-    const pct=Math.round(((me.correct||0)/total)*100);
-    document.getElementById('p-fscore').textContent=(me.score||0).toLocaleString();
-    document.getElementById('p-pct').textContent=pct+'%';
-    document.getElementById('p-cor').textContent=me.correct||0;
-    document.getElementById('p-wrg').textContent=total-(me.correct||0);
-    document.getElementById('p-badge').textContent=pct>=90?'Quiz Master':pct>=70?'Quiz Pro':pct>=50?'Quiz Learner':'Keep going!';
-    document.getElementById('p-rank-info').innerHTML=`Your rank: <strong style="color:var(--pul);font-family:var(--fd)">#${rank}</strong> of ${sorted.length} players`;
-    showScreen('s-presult');
-  });
+  // Small delay to allow last answer to fully write to Firebase before reading
+  setTimeout(()=>{
+    dbGet(`participants/${sk}`).then(me=>{
+      dbGet('participants').then(ps=>{
+        const all=ps?Object.values(ps):[];
+        const myData=me||{score:0,correct:0,name:playerName};
+        const sorted=[...all].sort((a,b)=>b.score-a.score);
+        // Find rank by safeKey match since name might have special chars
+        const rankIdx=sorted.findIndex(p=>safeKey(p.name||'')===sk||p.name===playerName);
+        const rank=rankIdx>=0?rankIdx+1:sorted.length;
+        const cor=myData.correct||0;
+        const sc=myData.score||0;
+        const pct=Math.round((cor/total)*100);
+        document.getElementById('p-fscore').textContent=sc.toLocaleString();
+        document.getElementById('p-pct').textContent=pct+'%';
+        document.getElementById('p-cor').textContent=cor;
+        document.getElementById('p-wrg').textContent=total-cor;
+        document.getElementById('p-badge').textContent=pct>=90?'Quiz Master':pct>=70?'Quiz Pro':pct>=50?'Quiz Learner':'Keep going!';
+        document.getElementById('p-rank-info').innerHTML=`Your rank: <strong style="color:var(--pul);font-family:var(--fd)">#${rank}</strong> of ${sorted.length} players`;
+        showScreen('s-presult');
+      });
+    });
+  }, 1500);
 }
 
 function mkLBRows(sorted,hl,limit,totalQ){
