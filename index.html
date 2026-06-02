@@ -664,7 +664,14 @@ window.selectQuiz = function(id){
 // ── HOST DASHBOARD ────────────────────────────────────────────────────────────
 function initHost(){
   showScreen('s-host');
-  dbListen('state',st=>{if(st)renderHCtrl(st);});
+  dbListen('state',st=>{
+    if(!st)return;
+    // Only re-render if phase or qIdx changed (avoid re-render on same state)
+    const prev=_cachedState;
+    if(prev&&prev.phase===st.phase&&prev.qIdx===st.qIdx&&prev.revealed===st.revealed)return;
+    _cachedState=st;
+    renderHCtrl(st);
+  });
   dbListen('participants',ps=>{refreshHostStats(ps);});
 }
 
@@ -696,7 +703,12 @@ function updHOpts(qi,arr,revealed){
   }).join('');
 }
 
-function renderHLBSmart(arr,phase,totalQ){
+function renderHLBSmart(arr,phase,totalQ,force){
+  if(!arr||!arr.length){
+    const el=document.getElementById('h-lblist');
+    if(el)el.innerHTML='<div style="font-size:13px;color:var(--tx3);text-align:center;padding:14px 0">No participants yet</div>';
+    return;
+  }
   const sorted=[...arr].sort((a,b)=>b.score-a.score);
   const limit=phase==='checkpoint'?5:0;
   const top=limit?sorted.slice(0,limit):sorted;
@@ -704,12 +716,12 @@ function renderHLBSmart(arr,phase,totalQ){
   const title=phase==='done'?'🏆 Final leaderboard':'📊 Checkpoint — Top 5';
   const titleEl=document.getElementById('h-lb-title');
   const cntEl=document.getElementById('h-lb-cnt');
-  if(titleEl&&titleEl.textContent!==title)titleEl.textContent=title;
+  if(titleEl)titleEl.textContent=title;
   if(cntEl)cntEl.textContent=`${sorted.length} participants`;
-  if(newKey===_lbCache)return;
+  if(newKey===_lbCache&&!force)return;
   _lbCache=newKey;
   const el=document.getElementById('h-lblist');if(!el)return;
-  el.style.transition='opacity 0.2s';el.style.opacity='0';
+  el.style.opacity='0';
   setTimeout(()=>{el.innerHTML=mkLBRows(sorted,'',limit,totalQ||activeQS.length);el.style.opacity='1';},200);
 }
 
@@ -760,18 +772,65 @@ function renderHCtrl(st){
     badge.textContent='Checkpoint';badge.className='pill pi';
     qc.style.display='none';lbc.style.display='block';
     ctrl.innerHTML=`<button class="btn bp" style="margin-bottom:8px" onclick="window.hNext(${st.cpAfter})">Next question → (Q${st.cpAfter+2})</button>`;
+    // Directly fetch and render leaderboard right now
+    dbGet('participants').then(ps=>{
+      const arr=ps?Object.values(ps):[];
+      renderHLBSmart(arr,'checkpoint',st.totalQ);
+    });
   } else if(st.phase==='done'){
     badge.textContent='Finished';badge.className='pill pt';
     qc.style.display='none';lbc.style.display='block';
     ctrl.innerHTML=`<div style="display:flex;gap:8px"><button class="btn bp" onclick="window.hPickAnother()">Run another quiz</button><button class="btn bg" onclick="window.hReset()">↺ Reset this quiz</button></div><p style="font-size:11px;color:var(--tx3);margin-top:8px;text-align:center">Reset clears all scores for a fresh run</p>`;
+    // Directly fetch and render final leaderboard
+    dbGet('participants').then(ps=>{
+      const arr=ps?Object.values(ps):[];
+      renderHLBSmart(arr,'done',st.totalQ);
+    });
   }
 }
 
-window.hStart=function(){dbSet('state',{...getStateSync(),phase:'question',qIdx:0,revealed:false,startTs:Date.now()});}
-window.hReveal=function(qi){stopTimer(false);dbUpdate('state',{phase:'reveal',qIdx:qi,revealed:true});}
-window.hNext=function(qi){dbUpdate('state',{phase:'question',qIdx:qi+1,revealed:false,startTs:Date.now()});}
-window.hCp=function(qi){dbUpdate('state',{phase:'checkpoint',cpAfter:qi});}
-window.hFinish=function(){dbUpdate('state',{phase:'done'});}
+window.hStart=function(){
+  const now=Date.now();
+  const newSt={...getStateSync(),phase:'question',qIdx:0,revealed:false,startTs:now};
+  _cachedState=newSt;
+  dbSet('state',newSt);
+  renderHCtrl(newSt); // instant host update
+}
+window.hReveal=function(qi){
+  stopTimer(false);
+  const newSt={...getStateSync(),phase:'reveal',qIdx:qi,revealed:true};
+  _cachedState=newSt;
+  dbUpdate('state',{phase:'reveal',qIdx:qi,revealed:true});
+  renderHCtrl(newSt); // instant host update
+}
+window.hNext=function(qi){
+  const now=Date.now();
+  const newSt={...getStateSync(),phase:'question',qIdx:qi+1,revealed:false,startTs:now};
+  _cachedState=newSt;
+  dbUpdate('state',{phase:'question',qIdx:qi+1,revealed:false,startTs:now});
+  renderHCtrl(newSt); // instant host update
+}
+window.hCp=function(qi){
+  const newSt={...getStateSync(),phase:'checkpoint',cpAfter:qi};
+  _cachedState=newSt;
+  dbUpdate('state',{phase:'checkpoint',cpAfter:qi});
+  renderHCtrl(newSt); // instant host update
+  // also immediately fetch and render LB
+  dbGet('participants').then(ps=>{
+    const arr=ps?Object.values(ps):[];
+    renderHLBSmart(arr,'checkpoint',newSt.totalQ,true);
+  });
+}
+window.hFinish=function(){
+  const newSt={...getStateSync(),phase:'done'};
+  _cachedState=newSt;
+  dbUpdate('state',{phase:'done'});
+  renderHCtrl(newSt); // instant host update
+  dbGet('participants').then(ps=>{
+    const arr=ps?Object.values(ps):[];
+    renderHLBSmart(arr,'done',newSt.totalQ,true);
+  });
+}
 window.hPickAnother=function(){initHostPick();}
 window.hReset=function(){
   const first=confirm('⚠️ Reset all scores for this quiz?');if(!first)return;
@@ -992,7 +1051,11 @@ function mkLBRows(sorted,hl,limit,totalQ){
 dbListen('participants',ps=>{
   if(!ps)return;
   dbGet('state').then(st=>{
-    if(st&&(st.phase==='checkpoint'||st.phase==='done'))renderHLBSmart(Object.values(ps),st.phase,st.totalQ);
+    if(st&&(st.phase==='checkpoint'||st.phase==='done')){
+      const lbc=document.getElementById('h-lbcard');
+      if(lbc)lbc.style.display='block';
+      renderHLBSmart(Object.values(ps),st.phase,st.totalQ,true);
+    }
   });
 });
 </script>
