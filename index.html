@@ -665,12 +665,12 @@ window.selectQuiz = function(id){
 function initHost(){
   showScreen('s-host');
   dbListen('state',st=>{
-    if(!st)return;
-    // Only re-render if phase or qIdx changed (avoid re-render on same state)
+    // Always render on first load, then only on actual changes
     const prev=_cachedState;
-    if(prev&&prev.phase===st.phase&&prev.qIdx===st.qIdx&&prev.revealed===st.revealed)return;
-    _cachedState=st;
-    renderHCtrl(st);
+    const firstLoad=!prev||!prev.phase;
+    if(!firstLoad&&st&&prev.phase===st.phase&&prev.qIdx===st.qIdx&&prev.revealed===st.revealed)return;
+    _cachedState=st||{phase:'lobby'};
+    renderHCtrl(_cachedState);
   });
   dbListen('participants',ps=>{refreshHostStats(ps);});
 }
@@ -726,15 +726,17 @@ function renderHLBSmart(arr,phase,totalQ,force){
 }
 
 function renderHCtrl(st){
+  // Guard — treat null/undefined st as lobby
+  if(!st) st={phase:'lobby'};
   if(st.quizId&&st.quizId!==activeQuizId){
-    // Load quiz data if we don't have it
     dbGet(`quizzes/${st.quizId}`).then(q=>{if(q){activeQS=q.questions;activeQuizId=st.quizId;activeQTime=q.timePerQ||15;}});
   }
   const ctrl=document.getElementById('h-ctrl');
   const qc=document.getElementById('h-qcard');
   const lbc=document.getElementById('h-lbcard');
   const badge=document.getElementById('h-badge');
-  const total=st.totalQ||activeQS.length;
+  if(!ctrl||!badge)return; // DOM not ready yet
+  const total=st.totalQ||activeQS.length||'?';
   if(!st||st.phase==='lobby'){
     badge.textContent='Lobby';badge.className='pill pi';
     qc.style.display='none';lbc.style.display='none';
@@ -745,7 +747,11 @@ function renderHCtrl(st){
     const quizQ=st&&st.totalQ?st.totalQ:activeQS.length||'?';
     const quizT=st&&st.timePerQ?st.timePerQ:activeQTime||15;
     const quizInfoBlock=quizTitle&&quizTitle!=='Quiz'?`<div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">${esc(quizIcon)}</div><div><div style="font-family:var(--fd);font-size:14px;font-weight:600">${esc(quizTitle)}</div><div style="font-size:12px;color:var(--tx3)">${quizQ} questions · ${quizT}s each</div></div></div>`:'';
-    ctrl.innerHTML=`${quizInfoBlock}<p style="font-size:13px;color:var(--tx2);margin-bottom:12px">Participants can join now. Start when ready.</p><button class="btn bp" style="margin-bottom:8px" onclick="window.hStart()">▶ Start quiz</button><button class="btn bg btn-sm" style="color:var(--tx3)" onclick="window.hPickAnother()">↩ Pick different quiz</button>`;
+    ctrl.innerHTML=`${quizInfoBlock}
+      <p style="font-size:13px;color:var(--tx2);margin-bottom:12px">Participants can join now. Start when ready.</p>
+      <button class="btn bp" style="margin-bottom:8px" onclick="window.hStart()">▶ Start quiz</button>
+      <div style="margin-top:8px"><button class="btn bg" style="font-size:12px;color:var(--tx3)" onclick="window.hPickAnother()">↩ Pick a different quiz</button></div>
+      <div style="margin-top:8px"><button class="btn bg" style="font-size:12px;color:var(--re)" onclick="window.hReset()">↺ Reset scores</button></div>`;
   } else if(st.phase==='question'){
     badge.textContent=`Q ${st.qIdx+1} live`;badge.className='pill pt';
     qc.style.display='block';lbc.style.display='none';ctrl.innerHTML='';
