@@ -375,7 +375,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 </div>
 
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getDatabase, ref, set, get, onValue, update, remove, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 // ── OBFUSCATED CODES ─────────────────────────────────────────────────────────
@@ -418,20 +418,31 @@ function dbListen(path,cb){onValue(ref(db,path),snap=>cb(snap.val()));}
 function dbRemove(path){return remove(ref(db,path));}
 
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
-try{
-  const app=initializeApp({databaseURL:FB_URL},'quizplatform');
-  db=getDatabase(app);
-  showScreen('s-home');
-  // Show active quiz name on home screen
-  dbListen('state',st=>{
-    const title=st&&st.quizTitle?st.quizTitle:'Select a quiz to start';
-    const qs=st&&st.totalQ?`${st.totalQ} questions`:'—';
-    document.getElementById('home-quiz-title').textContent=title;
-    document.getElementById('home-quiz-badge').textContent=qs;
-  });
-}catch(e){
-  alert('Firebase connection failed: '+e.message);
+function startApp(){
+  try{
+    // Reuse existing app if already initialized (prevents duplicate app error on reload)
+    const existingApps=getApps();
+    const existing=existingApps.find(a=>a.name==='quizplatform');
+    const app=existing?getApp('quizplatform'):initializeApp({databaseURL:FB_URL},'quizplatform');
+    db=getDatabase(app);
+    showScreen('s-home');
+    document.getElementById('home-quiz-badge').textContent='Ready';
+    // Show active quiz name on home screen
+    dbListen('state',st=>{
+      const title=st&&st.quizTitle?st.quizTitle:'Select a quiz to start';
+      const qs=st&&st.totalQ?`${st.totalQ} questions`:'Ready';
+      document.getElementById('home-quiz-title').textContent=title;
+      document.getElementById('home-quiz-badge').textContent=qs;
+    });
+  }catch(e){
+    console.error('Firebase error:',e);
+    document.getElementById('home-quiz-badge').textContent='Error';
+    alert('Firebase connection failed: '+e.message+'
+
+Please check your Firebase URL and rules.');
+  }
 }
+startApp();
 
 // ── CODE ENTRY ────────────────────────────────────────────────────────────────
 window.showCodeScreen=function(target){
