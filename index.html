@@ -622,7 +622,8 @@ function updateHostStats(ps){
   var bar=document.getElementById('h-apb');var txt=document.getElementById('h-apt');
   if(bar)bar.style.width=pct+'%';
   if(txt)txt.textContent=ans+' / '+arr.length+' answered';
-  showHOpts(st.qIdx,arr,st.phase==='reveal');
+  // Only show option counts AFTER reveal — not during question
+  if(st.phase==='reveal'){showHOpts(st.qIdx,arr,true);}
   if(st.phase==='checkpoint'||st.phase==='done')renderLB(arr,st.phase,st.totalQ);
 }
 function showHOpts(qi,arr,revealed){
@@ -631,10 +632,27 @@ function showHOpts(qi,arr,revealed){
   var counts=q.o.map(function(_,i){
     return arr.filter(function(p){return p.answers&&p.answers[qi]&&Array.isArray(p.answers[qi].sel)&&p.answers[qi].sel.indexOf(i)>=0;}).length;
   });
+  var total=arr.filter(function(p){return p.answers&&p.answers[qi]!==undefined;}).length;
   var mx=Math.max.apply(null,counts.concat([1]));
   el.innerHTML=q.o.map(function(o,i){
-    var isOk=q.a.indexOf(i)>=0;var pct=Math.round((counts[i]/mx)*100);
-    return '<div class="hopt'+(revealed&&isOk?' hok':'')+'">'+'<div class="hol">'+L[i]+'</div>'+'<div class="hotxt">'+esc(o)+'</div>'+'<div class="hbw"><div class="hb" style="width:'+pct+'%"></div></div>'+'<div class="hcnt">'+counts[i]+'</div></div>';
+    var isOk=q.a.indexOf(i)>=0;
+    var pct=Math.round((counts[i]/mx)*100);
+    var countLabel=counts[i]+' / '+total;
+    var pctLabel=total>0?Math.round((counts[i]/total)*100)+'%':'0%';
+    if(!revealed){
+      // During question: show options only — NO counts, NO bars, NO correct highlighting
+      return '<div class="hopt">'+'<div class="hol">'+L[i]+'</div>'+'<div class="hotxt">'+esc(o)+'</div>'+'</div>';
+    } else {
+      // After reveal: show full stats — correct highlighted, bars, counts and percentages
+      return '<div class="hopt'+(isOk?' hok':'')+'">'
+        +'<div class="hol">'+L[i]+'</div>'
+        +'<div class="hotxt">'+esc(o)+'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:90px">'
+        +'<div class="hbw" style="width:90px"><div class="hb" style="width:'+pct+'%"></div></div>'
+        +'<div style="font-size:11px;color:'+(isOk?'var(--te)':'var(--tx2)')+'">'+countLabel+' ('+pctLabel+')</div>'
+        +'</div>'
+        +'</div>';
+    }
   }).join('');
 }
 function renderLB(arr,phase,totalQ){
@@ -677,8 +695,18 @@ function renderHost(st){
       document.getElementById('h-qpill').className='pill '+(q.t==='multi'?'pa':'pi');
       document.getElementById('h-qtype').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
       document.getElementById('h-qtext').textContent=q.q;
+      // Hide answer bars — show options only (no counts visible to host during question)
       showHOpts(st.qIdx,[],false);
-      dbGet('participants').then(function(ps){showHOpts(st.qIdx,ps?Object.values(ps):[],false);});
+      // Update answered count bar but NOT the option bars
+      dbGet('participants').then(function(ps){
+        var arr=ps?Object.values(ps):[];
+        var ans=arr.filter(function(p){return p.answers&&p.answers[st.qIdx]!==undefined;}).length;
+        var apb=document.getElementById('h-apb');
+        var apt=document.getElementById('h-apt');
+        var pct=arr.length>0?Math.round((ans/arr.length)*100):0;
+        if(apb)apb.style.width=pct+'%';
+        if(apt)apt.textContent=ans+' / '+arr.length+' answered';
+      });
       startTimer(st.startTs||Date.now(),'htf','htn','h-tblock',false,st.timePerQ||activeQTime);
       document.getElementById('h-action').innerHTML='<button class="btn bp" onclick="hReveal('+st.qIdx+')">👁 Reveal answer & stop timer</button>';
     }
