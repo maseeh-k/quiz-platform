@@ -176,7 +176,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
         <label class="lbl">Firebase Database URL</label>
         <input class="inp" id="fb-url-input" type="text" placeholder="https://your-project-default-rtdb.firebaseio.com"/>
         <div class="errt" id="fb-url-err">Please enter a valid Firebase URL (must start with https://)</div>
-        <div style="margin-top:10px"><button class="btn bp" onclick="saveFbUrl()">✓ Connect & continue</button></div>
+        <div style="margin-top:10px"><button class="btn bp" onclick="window.saveFbUrl()">✓ Connect & continue</button></div>
       </div>
     </div>
   </div>
@@ -193,9 +193,9 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
       <label class="lbl">Your name</label>
       <input class="inp" id="p-name" type="text" placeholder="e.g. Priya Sharma" maxlength="40" style="margin-bottom:0"/>
       <div class="errt" id="name-err">Please enter your name</div>
-      <div style="margin-top:12px"><button class="btn bt" onclick="joinQuiz()">→ Join quiz</button></div>
-      <div style="margin-top:8px"><button class="btn bg" style="font-size:12px" onclick="showCodeScreen('host')">🔒 Host access</button></div>
-      <div style="margin-top:6px"><button class="btn bg" style="font-size:12px" onclick="showCodeScreen('admin')">⚙️ Admin panel</button></div>
+      <div style="margin-top:12px"><button class="btn bt" onclick="window.joinQuiz()">→ Join quiz</button></div>
+      <div style="margin-top:8px"><button class="btn bg" style="font-size:12px" onclick="window.showCodeScreen('host')">🔒 Host access</button></div>
+      <div style="margin-top:6px"><button class="btn bg" style="font-size:12px" onclick="window.showCodeScreen('admin')">⚙️ Admin panel</button></div>
     </div>
   </div>
 </div>
@@ -209,12 +209,12 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
       <div class="cdots"><div class="cd" id="cd0"></div><div class="cd" id="cd1"></div><div class="cd" id="cd2"></div><div class="cd" id="cd3"></div></div>
       <div class="cerr" id="cerr">Incorrect code. Try again.</div>
       <div class="numpad">
-        <div class="nk" onclick="ki('1')">1</div><div class="nk" onclick="ki('2')">2</div><div class="nk" onclick="ki('3')">3</div>
-        <div class="nk" onclick="ki('4')">4</div><div class="nk" onclick="ki('5')">5</div><div class="nk" onclick="ki('6')">6</div>
-        <div class="nk" onclick="ki('7')">7</div><div class="nk" onclick="ki('8')">8</div><div class="nk" onclick="ki('9')">9</div>
-        <div class="nk" style="font-size:13px;color:var(--tx3)" onclick="kb()">⌫</div>
-        <div class="nk" onclick="ki('0')">0</div>
-        <div class="nk" style="font-size:12px;color:var(--tx3)" onclick="showScreen('s-home')">Back</div>
+        <div class="nk" onclick="window.ki('1')">1</div><div class="nk" onclick="window.ki('2')">2</div><div class="nk" onclick="window.ki('3')">3</div>
+        <div class="nk" onclick="window.ki('4')">4</div><div class="nk" onclick="window.ki('5')">5</div><div class="nk" onclick="window.ki('6')">6</div>
+        <div class="nk" onclick="window.ki('7')">7</div><div class="nk" onclick="window.ki('8')">8</div><div class="nk" onclick="window.ki('9')">9</div>
+        <div class="nk" style="font-size:13px;color:var(--tx3)" onclick="window.kb()">⌫</div>
+        <div class="nk" onclick="window.ki('0')">0</div>
+        <div class="nk" style="font-size:12px;color:var(--tx3)" onclick="window.showScreen('s-home')">Back</div>
       </div>
     </div>
   </div>
@@ -226,8 +226,8 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
     <div class="ch">
       <div class="ct">⚙️ Admin panel</div>
       <div style="display:flex;gap:6px">
-        <button class="btn bp btn-sm" onclick="showCreateQuiz()">+ New quiz</button>
-        <button class="btn bg btn-sm" onclick="showScreen('s-home')">← Back</button>
+        <button class="btn bp btn-sm" onclick="window.showCreateQuiz()">+ New quiz</button>
+        <button class="btn bg btn-sm" onclick="window.showScreen('s-home')">← Back</button>
       </div>
     </div>
     <div class="cb">
@@ -242,7 +242,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
   <div class="card">
     <div class="ch">
       <div class="ct" id="create-title">✏️ Create quiz</div>
-      <button class="btn bg btn-sm" onclick="showScreen('s-admin')">← Back</button>
+      <button class="btn bg btn-sm" onclick="window.showScreen('s-admin')">← Back</button>
     </div>
     <div class="cb">
       <label class="lbl">Quiz title</label>
@@ -254,11 +254,11 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
       <div class="divider"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="sl" style="margin-bottom:0">Questions</div>
-        <button class="btn bp btn-sm" onclick="addQuestion()">+ Add question</button>
+        <button class="btn bp btn-sm" onclick="window.addQuestion()">+ Add question</button>
       </div>
       <div id="questions-container"></div>
       <div class="divider"></div>
-      <button class="btn bp" onclick="saveQuiz()" id="save-quiz-btn">💾 Save quiz</button>
+      <button class="btn bp" onclick="window.saveQuiz()" id="save-quiz-btn">💾 Save quiz</button>
       <div class="errt" id="quiz-save-err" style="margin-top:8px">Please fill in all fields and mark at least one correct answer per question.</div>
     </div>
   </div>
@@ -267,7 +267,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:20px 14px 60p
 <!-- HOST: PICK QUIZ -->
 <div id="s-host-pick" class="screen">
   <div class="card">
-    <div class="ch"><div class="ct">🖥 Select a quiz to run</div><button class="btn bg btn-sm" onclick="showScreen('s-home')">← Back</button></div>
+    <div class="ch"><div class="ct">🖥 Select a quiz to run</div><button class="btn bg btn-sm" onclick="window.showScreen('s-home')">← Back</button></div>
     <div class="cb">
       <div class="sl">Available quizzes</div>
       <div id="host-quiz-list"><div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px 0">Loading...</div></div>
@@ -467,7 +467,7 @@ function updDots(){for(let i=0;i<4;i++)document.getElementById('cd'+i).classList
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function initAdmin(){showScreen('s-admin');loadAdminQuizList();}
 
-function loadAdminQuizList(){
+window.loadAdminQuizList=function loadAdminQuizList(){
   const el=document.getElementById('admin-quiz-list');
   el.innerHTML=`<div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px 0">Loading quizzes...</div>`;
   dbGet('quizzes').then(quizzes=>{
@@ -489,7 +489,7 @@ function loadAdminQuizList(){
     el.innerHTML=`<div style="font-size:13px;color:var(--re);text-align:center;padding:20px 0">
       ⚠️ Could not load quizzes. Firebase rules may have expired.<br><br>
       <strong>Fix:</strong> Go to Firebase Console → Realtime Database → Rules → change expiry date or set to true.<br><br>
-      <button onclick="loadAdminQuizList()" style="background:var(--pu);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px">↺ Retry</button>
+      <button onclick="window.loadAdminQuizList()" style="background:var(--pu);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px">↺ Retry</button>
     </div>`;
     console.error('Firebase error:',err);
   });
@@ -978,18 +978,38 @@ window.joinQuiz=function(){
   playerName=n;
   const sk=safeKey(n);
   dbGet('state').then(st=>{
-    if(!st||!st.quizId){alert('Host has not selected a quiz yet. Please wait.');return;}
+    if(!st||!st.quizId){
+      alert('Host has not selected a quiz yet. Please wait and try again.');
+      return;
+    }
+    if(st.phase==='done'){
+      alert('This quiz session has ended. Please wait for the host to start a new session.');
+      return;
+    }
     dbGet(`quizzes/${st.quizId}`).then(q=>{
-      if(!q){alert('Quiz not found.');return;}
-      activeQS=q.questions;activeQTime=q.timePerQ||15;
-      // Write participant record cleanly
-      set(ref(db,`participants/${sk}`),{name:n,score:0,correct:0,answers:{},joined:Date.now()}).then(()=>{
+      if(!q){alert('Quiz not found. Please ask the host to re-select the quiz.');return;}
+      activeQS=q.questions;
+      activeQTime=q.timePerQ||15;
+      // Write participant record
+      set(ref(db,`participants/${sk}`),{name:n,score:0,correct:0,answers:{},joined:Date.now()})
+      .then(()=>{
         document.getElementById('p-name-w').textContent=n;
         document.getElementById('p-name-q').textContent=n;
         showScreen('s-pwait');
         listenAsParticipant();
+      })
+      .catch(err=>{
+        alert('Could not join quiz. Firebase error: '+err.message+'
+
+Make sure Firebase rules allow writes (set .write to true in Firebase Console → Realtime Database → Rules)');
       });
+    }).catch(err=>{
+      alert('Could not load quiz data. Error: '+err.message);
     });
+  }).catch(err=>{
+    alert('Could not connect to database. Error: '+err.message+'
+
+Check Firebase rules.');
   });
 }
 
