@@ -782,23 +782,41 @@ function renderHCtrl(st){
     if(qc)qc.style.display='block';
     if(lbc)lbc.style.display='none';
     ctrl.innerHTML='';
-    const q=activeQS[st.qIdx];
-    if(!q){
-      // Questions not loaded yet — reload
-      if(st.quizId){
-        dbGet(`quizzes/${st.quizId}`).then(qz=>{
-          if(qz){activeQS=qz.questions;activeQuizId=st.quizId;activeQTime=qz.timePerQ||15;renderHCtrl(st);}
-        });
+    // Always ensure questions are loaded before rendering
+    function renderQuestion(){
+      const q=activeQS[st.qIdx];
+      if(!q){
+        badge.textContent=`Q ${st.qIdx+1} loading...`;
+        ctrl.innerHTML='<div style="font-size:13px;color:var(--tx2);text-align:center;padding:10px">Loading question...</div>';
+        return;
       }
-      return;
+      document.getElementById('h-qhead').textContent=`Question ${st.qIdx+1} of ${total}`;
+      document.getElementById('h-qpill').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
+      document.getElementById('h-qpill').className=`pill ${q.t==='multi'?'pa':'pi'}`;
+      document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select — select all that apply':'Multiple choice';
+      document.getElementById('h-qtext').textContent=q.q;
+      startSyncedTimer(st.startTs||Date.now(),'htf','htn','h-tblock',false,st.timePerQ||activeQTime);
+      document.getElementById('h-action').innerHTML=`<button class="btn bp" onclick="window.hReveal(${st.qIdx})">👁 Reveal answer & stop timer</button>`;
     }
-    document.getElementById('h-qhead').textContent=`Question ${st.qIdx+1} of ${total}`;
-    document.getElementById('h-qpill').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
-    document.getElementById('h-qpill').className=`pill ${q.t==='multi'?'pa':'pi'}`;
-    document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select — select all that apply':'Multiple choice';
-    document.getElementById('h-qtext').textContent=q.q;
-    startSyncedTimer(st.startTs||Date.now(),'htf','htn','h-tblock',false,st.timePerQ||activeQTime);
-    document.getElementById('h-action').innerHTML=`<button class="btn bp" onclick="window.hReveal(${st.qIdx})">👁 Reveal answer & stop timer</button>`;
+    if(activeQS.length>0&&activeQS[st.qIdx]){
+      // Questions already in memory — render immediately
+      renderQuestion();
+    } else {
+      // Need to load from Firebase first
+      const qid=st.quizId||activeQuizId;
+      if(qid){
+        dbGet(`quizzes/${qid}`).then(qz=>{
+          if(qz){
+            activeQS=qz.questions;
+            activeQuizId=qid;
+            activeQTime=qz.timePerQ||15;
+          }
+          renderQuestion();
+        });
+      } else {
+        renderQuestion();
+      }
+    }
 
   } else if(st.phase==='reveal'){
     badge.textContent=`Q ${st.qIdx+1} revealed`;badge.className='pill pa';
@@ -810,12 +828,13 @@ function renderHCtrl(st){
     if(htf){htf.style.width='0%';htf.className='timer-bar-fill urg';}
     if(htn){htn.textContent='0';htn.className='timer-digit urg';}
     if(hb)hb.classList.add('urg');
-    const q=activeQS[st.qIdx];
-    if(!q)return;
-    document.getElementById('h-qhead').textContent=`Question ${st.qIdx+1} of ${total}`;
-    document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
-    document.getElementById('h-qtext').textContent=q.q;
-    const isCp=(st.qIdx+1)%CHECKPOINTS_EVERY===0&&st.qIdx<total-1;
+    function renderReveal(){
+      const q=activeQS[st.qIdx];
+      if(!q)return;
+      document.getElementById('h-qhead').textContent=`Question ${st.qIdx+1} of ${total}`;
+      document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
+      document.getElementById('h-qtext').textContent=q.q;
+      const isCp=(st.qIdx+1)%CHECKPOINTS_EVERY===0&&st.qIdx<total-1;
     const isLast=st.qIdx>=total-1;
     const nextLbl=isLast?'🏁 Show final leaderboard':isCp?'📊 Show leaderboard checkpoint':'Next question →';
     const nextFn=isLast?'window.hFinish()':isCp?`window.hCp(${st.qIdx})`:`window.hNext(${st.qIdx})`;
@@ -824,6 +843,18 @@ function renderHCtrl(st){
         ✓ Correct: ${q.a.map(x=>L[x]+'. '+q.o[x]).join(' & ')}
       </div>
       <button class="btn bp" onclick="${nextFn}">${nextLbl}</button>`;
+    }
+    if(activeQS.length>0&&activeQS[st.qIdx]){
+      renderReveal();
+    } else {
+      const qid=st.quizId||activeQuizId;
+      if(qid){
+        dbGet(`quizzes/${qid}`).then(qz=>{
+          if(qz){activeQS=qz.questions;activeQuizId=qid;activeQTime=qz.timePerQ||15;}
+          renderReveal();
+        });
+      } else {renderReveal();}
+    }
 
   } else if(st.phase==='checkpoint'){
     badge.textContent='Checkpoint';badge.className='pill pi';
