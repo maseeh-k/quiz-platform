@@ -457,8 +457,9 @@ function updDots(){for(let i=0;i<4;i++)document.getElementById('cd'+i).classList
 function initAdmin(){showScreen('s-admin');loadAdminQuizList();}
 
 function loadAdminQuizList(){
+  const el=document.getElementById('admin-quiz-list');
+  el.innerHTML=`<div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px 0">Loading quizzes...</div>`;
   dbGet('quizzes').then(quizzes=>{
-    const el=document.getElementById('admin-quiz-list');
     if(!quizzes||!Object.keys(quizzes).length){
       el.innerHTML=`<div style="font-size:13px;color:var(--tx3);text-align:center;padding:20px 0">No quizzes yet. Click <strong>+ New quiz</strong> to create one.</div>`;
       return;
@@ -473,6 +474,14 @@ function loadAdminQuizList(){
         <div class="qz-actions">
           <button class="btn bp btn-sm" onclick="window.editQuiz('${id}')">Edit</button>
           <button class="btn bd btn-sm" onclick="window.deleteQuiz('${id}')">Del</button>
+  }).catch(err=>{
+    el.innerHTML=`<div style="font-size:13px;color:var(--re);text-align:center;padding:20px 0">
+      ⚠️ Could not load quizzes. Firebase rules may have expired.<br><br>
+      <strong>Fix:</strong> Go to Firebase Console → Realtime Database → Rules → change expiry date or set to true.<br><br>
+      <button onclick="loadAdminQuizList()" style="background:var(--pu);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px">↺ Retry</button>
+    </div>`;
+    console.error('Firebase error:',err);
+  });
         </div>
       </div>`).join('');
   });
@@ -795,6 +804,12 @@ function renderHCtrl(st){
       document.getElementById('h-qpill').className=`pill ${q.t==='multi'?'pa':'pi'}`;
       document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select — select all that apply':'Multiple choice';
       document.getElementById('h-qtext').textContent=q.q;
+      // Render answer options with empty counts (no one has answered yet)
+      updHOpts(st.qIdx,[],false);
+      // Then fetch real participant answers and update bars
+      dbGet('participants').then(ps=>{
+        updHOpts(st.qIdx,ps?Object.values(ps):[],false);
+      });
       startSyncedTimer(st.startTs||Date.now(),'htf','htn','h-tblock',false,st.timePerQ||activeQTime);
       document.getElementById('h-action').innerHTML=`<button class="btn bp" onclick="window.hReveal(${st.qIdx})">👁 Reveal answer & stop timer</button>`;
     }
@@ -834,6 +849,10 @@ function renderHCtrl(st){
       document.getElementById('h-qhead').textContent=`Question ${st.qIdx+1} of ${total}`;
       document.getElementById('h-qtype-lbl').textContent=q.t==='multi'?'Multi-select':'Multiple choice';
       document.getElementById('h-qtext').textContent=q.q;
+      // Render options with correct answers highlighted
+      dbGet('participants').then(ps=>{
+        updHOpts(st.qIdx,ps?Object.values(ps):[],true);
+      });
       const isCp=(st.qIdx+1)%CHECKPOINTS_EVERY===0&&st.qIdx<total-1;
     const isLast=st.qIdx>=total-1;
     const nextLbl=isLast?'🏁 Show final leaderboard':isCp?'📊 Show leaderboard checkpoint':'Next question →';
